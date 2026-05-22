@@ -14,4 +14,4 @@ COPY scripts/ ./scripts/
 
 RUN pnpm install --frozen-lockfile --offline
 
-CMD ["sh", "-c", "pnpm db:manage:migrate 2>&1 && drizzle-kit generate --config=drizzle.run.config.ts 2>&1 && pnpm db:run:migrate 2>&1 && pnpm db:auth:init 2>&1"]
+CMD ["sh", "-c", "pnpm db:manage:migrate 2>&1 && pnpm exec drizzle-kit generate --config=drizzle.run.config.ts 2>&1 && pnpm db:run:migrate 2>&1 && pnpm db:auth:init 2>&1"]
