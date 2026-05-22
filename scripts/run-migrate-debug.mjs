@@ -14,6 +14,29 @@ if (!connStr) {
   process.exit(1);
 }
 
+// Print all migration files in order so we can see what's being applied
+import fs from 'node:fs';
+const migFolder = path.join(__dirname, '../node_modules/@inkeep/agents-core/drizzle/runtime');
+console.log('=== Migration files in order ===');
+try {
+  const journal = JSON.parse(fs.readFileSync(path.join(migFolder, 'meta/_journal.json'), 'utf8'));
+  journal.entries.forEach((e, i) => {
+    const sqlFile = path.join(migFolder, e.when + '_' + e.tag + '.sql');
+    const altFile = path.join(migFolder, e.tag + '.sql');
+    const filePath = fs.existsSync(sqlFile) ? sqlFile : altFile;
+    console.log(`[${i}] ${e.tag}`);
+    if (fs.existsSync(filePath)) {
+      console.log(fs.readFileSync(filePath, 'utf8').substring(0, 500));
+    }
+    console.log('---');
+  });
+} catch(e) {
+  // fallback: just list files
+  if (fs.existsSync(migFolder)) {
+    console.log(fs.readdirSync(migFolder));
+  }
+}
+
 console.log('=== Connecting to run DB ===');
 const pool = new pg.Pool({
   connectionString: connStr,
