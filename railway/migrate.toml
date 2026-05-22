@@ -1,0 +1,15 @@
+# Railway config for the DB Migration job
+# This service runs once to migrate both databases and seed the admin user.
+# In Railway UI → Service Settings → Source → set "Config Path" to: railway/migrate.toml
+#
+# NOTE: Railway will restart this service if it exits with a non-zero code.
+# Drizzle and the auth init script are idempotent, so repeated runs are safe.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.agents-migrate"
+
+[deploy]
+numReplicas = 1
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

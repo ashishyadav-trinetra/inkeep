@@ -1,0 +1,10 @@
+# Dockerfile for SpiceDB on Railway
+# Combines the migration step and the serve step into a single service,
+# since Railway has no native "run-once then serve" primitive.
+#
+# SPICEDB_DATASTORE_CONN_URI must be set as an env var on this service in Railway.
+
+FROM authzed/spicedb:latest
+
+# Run migration then start the server
+CMD ["sh", "-c", "spicedb migrate head && spicedb serve"]

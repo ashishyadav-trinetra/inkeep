@@ -1,0 +1,13 @@
+# Railway config for the Agents API service
+# In Railway UI → Service Settings → Source → set "Config Path" to: railway/agents-api.toml
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.agents-api"
+
+[deploy]
+numReplicas = 1
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
