@@ -1,18 +1,45 @@
-// Runs drizzle-kit migrate for the run DB and captures ALL output (stdout + stderr)
-import { execSync } from 'node:child_process';
+// Bypasses drizzle-kit and uses drizzle-orm migrator directly
+// so we can see the actual SQL error from Neon.
+import pg from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
-console.log('=== Starting run DB migration ===');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const connStr = process.env.INKEEP_AGENTS_RUN_DATABASE_URL;
+if (!connStr) {
+  console.error('ERROR: INKEEP_AGENTS_RUN_DATABASE_URL is not set');
+  process.exit(1);
+}
+
+console.log('=== Connecting to run DB ===');
+const pool = new pg.Pool({
+  connectionString: connStr,
+  ssl: { rejectUnauthorized: false },
+});
+
+const db = drizzle(pool);
+
+const migrationsFolder = path.join(
+  __dirname,
+  '../node_modules/@inkeep/agents-core/drizzle/runtime'
+);
+
+console.log('=== Migrations folder:', migrationsFolder, '===');
+
 try {
-  execSync('node_modules/.bin/drizzle-kit migrate --config=drizzle.run.config.ts', {
-    stdio: 'inherit',  // pipes stdout+stderr directly to process output
-    encoding: 'utf8',
-  });
-  console.log('=== Run DB migration succeeded ===');
+  await migrate(db, { migrationsFolder });
+  console.log('=== Run DB migrations applied successfully ===');
 } catch (err) {
   console.error('=== Run DB migration FAILED ===');
-  console.error('Exit code:', err.status);
-  console.error('Signal:', err.signal);
-  if (err.stdout) console.error('STDOUT:', err.stdout);
-  if (err.stderr) console.error('STDERR:', err.stderr);
+  console.error('Message:', err.message);
+  console.error('Code:', err.code);
+  console.error('Detail:', err.detail);
+  console.error('Hint:', err.hint);
+  console.error('Full error:', err);
   process.exit(1);
+} finally {
+  await pool.end();
 }
