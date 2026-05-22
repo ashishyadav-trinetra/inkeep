@@ -1,0 +1,85 @@
+services:
+  doltgres-db:
+    image: dolthub/doltgresql:latest
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      DOLTGRES_USER: appuser
+      DOLTGRES_PASSWORD: password
+      DOLTGRES_DB: inkeep_agents
+    ports:
+      - "5432:5432"
+    volumes:
+      - doltgres-data:/var/lib/doltgres
+    healthcheck:
+      test: ["CMD-SHELL", "PGPASSWORD=password psql -h localhost -U appuser -d inkeep_agents -c 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+  postgres-db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: inkeep_agents
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appuser -d inkeep_agents"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # SpiceDB for local authorization (persistent)
+  spicedb:
+    image: authzed/spicedb:latest
+    command: serve
+    restart: unless-stopped
+    ports:
+      - "50051:50051"  # gRPC
+      - "8443:8443"    # HTTP
+    environment:
+      SPICEDB_GRPC_PRESHARED_KEY: "dev-secret-key"
+      SPICEDB_DATASTORE_ENGINE: postgres
+      SPICEDB_DATASTORE_CONN_URI: "postgres://spicedb:spicedb@spicedb-postgres:5432/spicedb?sslmode=disable"
+      SPICEDB_HTTP_ENABLED: "true"
+    depends_on:
+      spicedb-migrate:
+        condition: service_completed_successfully
+
+  spicedb-migrate:
+    image: authzed/spicedb:latest
+    command: migrate head
+    restart: "no"
+    environment:
+      SPICEDB_DATASTORE_ENGINE: postgres
+      SPICEDB_DATASTORE_CONN_URI: "postgres://spicedb:spicedb@spicedb-postgres:5432/spicedb?sslmode=disable"
+    depends_on:
+      spicedb-postgres:
+        condition: service_healthy
+
+  spicedb-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: spicedb
+      POSTGRES_PASSWORD: spicedb
+      POSTGRES_DB: spicedb
+    ports:
+      - "5434:5432"
+    volumes:
+      - spicedb-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spicedb"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  doltgres-data:
+  postgres-data:
+  spicedb-postgres-data:

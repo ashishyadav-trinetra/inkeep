@@ -1,0 +1,23 @@
+procs:
+  service-info: 
+    shell: "node scripts/show-services.js --watch"
+    dependencies:
+      - agents-api
+      - mcp
+  agents-api:
+    shell: "pnpm dev" 
+    cwd: "apps/agents-api"
+  mcp:
+    shell: "node scripts/start-mcp-conditionally.js"
+  dashboard:
+    shell: "inkeep dev --open-browser"
+
+keymap_term:  # keymap when terminal is focused
+  <q>: { c: quit }
+  <esc>: { c: quit }
+  <C-c>: { c: quit }
+
+keymap_procs:  # keymap when process list is focused
+  <esc>: { c: quit }
+  <q>: { c: quit }
+  <C-c>: { c: quit }
