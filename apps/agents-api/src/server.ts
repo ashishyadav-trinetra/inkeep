@@ -5,5 +5,5 @@ import app from './index.js';
 
 serve({
   fetch: app.fetch,
-  port: 3002,
+  port: Number(process.env.PORT) || 3002,
 });
