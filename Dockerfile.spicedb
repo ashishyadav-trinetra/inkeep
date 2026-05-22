@@ -1,10 +1,26 @@
 # Dockerfile for SpiceDB on Railway
-# Combines the migration step and the serve step into a single service,
-# since Railway has no native "run-once then serve" primitive.
+# Combines the migration step and the serve step into a single service.
 #
-# SPICEDB_DATASTORE_CONN_URI must be set as an env var on this service in Railway.
+# authzed/spicedb:latest is distroless (no shell), so we copy the binary
+# into Alpine which gives us sh to run migrate → then serve in sequence.
+#
+# Required env vars on this Railway service:
+#   SPICEDB_DATASTORE_ENGINE=postgres
+#   SPICEDB_DATASTORE_CONN_URI=<your neon or postgres connection string>
+#   SPICEDB_GRPC_PRESHARED_KEY=<your secret>
+#   SPICEDB_HTTP_ENABLED=true
+#   SPICEDB_TELEMETRY_ENDPOINT=
+#   SPICEDB_METRICS_ENABLED=false
 
-FROM authzed/spicedb:latest
+# Stage 1: pull the spicedb binary out of the distroless image
+FROM authzed/spicedb:latest AS spicedb-src
 
-# Run migration then start the server
-CMD ["sh", "-c", "spicedb migrate head && spicedb serve"]
+# Stage 2: run inside Alpine (has sh, curl, ca-certs)
+FROM alpine:3.20
+
+# Copy binary + TLS certs from the official image
+COPY --from=spicedb-src /usr/local/bin/spicedb /usr/local/bin/spicedb
+COPY --from=spicedb-src /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
+# Run migration first, then start the server
+CMD ["sh", "-c", "spicedb migrate head && exec spicedb serve"]
