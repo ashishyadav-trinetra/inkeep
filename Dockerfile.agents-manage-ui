@@ -18,13 +18,15 @@ ENV SKIP_APP_INSTALL="1"
 
 RUN pnpm inkeep dev --export --output-dir ./apps/manage-ui
 
-# Overwrite next.config after export.
-# - ignoreBuildErrors: prevents type errors in generated code from failing the build.
-# - rewrites: proxy /api/* and /manage/* to agents-api so session cookies are
-#   served from the same origin as the UI. This lets Next.js middleware read the
-#   Better Auth session cookie server-side and avoids cross-domain cookie issues.
-ARG AGENTS_API_URL=https://agents-api-inkeep-agents.up.railway.app
-RUN printf 'import type { NextConfig } from "next";\nconst nextConfig: NextConfig = { typescript: { ignoreBuildErrors: true }, eslint: { ignoreDuringBuilds: true }, async rewrites() { return [{ source: "/api/:path*", destination: "%s/api/:path*" }, { source: "/manage/:path*", destination: "%s/manage/:path*" }, { source: "/run/:path*", destination: "%s/run/:path*" }]; } };\nexport default nextConfig;\n' "${AGENTS_API_URL}" "${AGENTS_API_URL}" "${AGENTS_API_URL}" > ./apps/manage-ui/next.config.ts
+# Overwrite next.config after export using the version-controlled docker config.
+# next.config.docker.ts includes everything the production build needs:
+#   - transpilePackages for @inkeep/agents-ui
+#   - Turbopack SVG loader (@svgr/webpack) so icons/*.svg imports resolve to React
+#     components instead of plain objects (fixes React error #130 "got: object")
+#   - serverExternalPackages for OpenTelemetry
+#   - rewrites proxying /api, /manage, /run to agents-api (AGENTS_API_URL env var)
+# AGENTS_API_URL is read at runtime from the Railway environment variable — no ARG needed.
+RUN cp ./apps/manage-ui/next.config.docker.ts ./apps/manage-ui/next.config.ts
 
 WORKDIR /inkeep-agents/apps/manage-ui
 
