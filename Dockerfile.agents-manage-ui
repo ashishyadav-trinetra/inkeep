@@ -11,8 +11,9 @@ RUN pnpm fetch
 COPY scripts/ ./scripts/
 COPY apps/shared/ ./apps/shared/
 COPY apps/manage-ui/ ./apps/manage-ui/
-# Stash the docker config at the workspace root BEFORE export wipes apps/manage-ui/
+# Stash files that must survive the export step (export regenerates apps/manage-ui/ wholesale)
 COPY apps/manage-ui/next.config.docker.ts ./next.config.docker.ts
+COPY apps/manage-ui/auth-proxy-route.ts ./auth-proxy-route.ts
 
 RUN pnpm install --frozen-lockfile --offline
 
@@ -29,6 +30,21 @@ RUN pnpm inkeep dev --export --output-dir ./apps/manage-ui
 #   - serverExternalPackages for OpenTelemetry
 #   - rewrites proxying /api, /manage, /run to agents-api (reads AGENTS_API_URL at runtime)
 RUN cp ./next.config.docker.ts ./apps/manage-ui/next.config.ts
+
+# Inject the auth proxy Route Handler at /api/auth/[...slug]/route.ts
+#
+# Problem: Next.js rewrites strip Set-Cookie headers from proxied upstream responses,
+# so the browser never stores the session cookie after sign-in and the middleware
+# keeps redirecting to /login.
+#
+# Fix: A Route Handler takes precedence over rewrites for its path. It proxies
+# /api/auth/* to agents-api and forwards the FULL response including Set-Cookie,
+# so the browser gets the cookie on manage-ui's own origin.
+#
+# AGENTS_API_URL must be set to the direct agents-api URL in the Railway manage-ui
+# service vars (e.g. https://agents-api-inkeep-agents.up.railway.app).
+RUN mkdir -p './apps/manage-ui/src/app/api/auth/[...slug]' && \
+    cp ./auth-proxy-route.ts './apps/manage-ui/src/app/api/auth/[...slug]/route.ts'
 
 # Make AGENTS_API_URL available at build time so next.config.ts can bake the
 # correct rewrite destination (Railway env vars are only injected at runtime,
