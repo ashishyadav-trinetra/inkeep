@@ -11,22 +11,24 @@ RUN pnpm fetch
 COPY scripts/ ./scripts/
 COPY apps/shared/ ./apps/shared/
 COPY apps/manage-ui/ ./apps/manage-ui/
+# Stash the docker config at the workspace root BEFORE export wipes apps/manage-ui/
+COPY apps/manage-ui/next.config.docker.ts ./next.config.docker.ts
 
 RUN pnpm install --frozen-lockfile --offline
 
 ENV SKIP_APP_INSTALL="1"
 
+# Export regenerates apps/manage-ui/ (including next.config.ts), so next.config.docker.ts
+# must be stashed outside that directory first (done above).
 RUN pnpm inkeep dev --export --output-dir ./apps/manage-ui
 
-# Overwrite next.config after export using the version-controlled docker config.
-# next.config.docker.ts includes everything the production build needs:
+# Overwrite the exported next.config.ts with our stashed version, which adds:
 #   - transpilePackages for @inkeep/agents-ui
-#   - Turbopack SVG loader (@svgr/webpack) so icons/*.svg imports resolve to React
-#     components instead of plain objects (fixes React error #130 "got: object")
+#   - Turbopack SVG loader (@svgr/webpack) so icons/*.svg resolve to React components
+#     instead of plain objects (fixes React error #130 "Element type is invalid: got object")
 #   - serverExternalPackages for OpenTelemetry
-#   - rewrites proxying /api, /manage, /run to agents-api (AGENTS_API_URL env var)
-# AGENTS_API_URL is read at runtime from the Railway environment variable — no ARG needed.
-RUN cp ./apps/manage-ui/next.config.docker.ts ./apps/manage-ui/next.config.ts
+#   - rewrites proxying /api, /manage, /run to agents-api (reads AGENTS_API_URL at runtime)
+RUN cp ./next.config.docker.ts ./apps/manage-ui/next.config.ts
 
 WORKDIR /inkeep-agents/apps/manage-ui
 
