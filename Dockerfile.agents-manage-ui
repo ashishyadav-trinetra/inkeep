@@ -14,6 +14,7 @@ COPY apps/manage-ui/ ./apps/manage-ui/
 # Stash files that must survive the export step (export regenerates apps/manage-ui/ wholesale)
 COPY apps/manage-ui/next.config.docker.ts ./next.config.docker.ts
 COPY apps/manage-ui/auth-proxy-route.ts ./auth-proxy-route.ts
+COPY apps/manage-ui/traces-override-route.ts ./traces-override-route.ts
 
 RUN pnpm install --frozen-lockfile --offline
 
@@ -45,6 +46,11 @@ RUN cp ./next.config.docker.ts ./apps/manage-ui/next.config.ts
 # service vars (e.g. https://agents-api-inkeep-agents.up.railway.app).
 RUN mkdir -p './apps/manage-ui/src/app/api/auth/[...slug]' && \
     cp ./auth-proxy-route.ts './apps/manage-ui/src/app/api/auth/[...slug]/route.ts'
+
+# Override the traces API route to prevent flooding Railway logs when SigNoz is not deployed.
+# The default route uses fetchWithRetry which amplifies each query into 4 requests on 5xx.
+# This override returns 200+empty-data on any 5xx (single attempt, no retry).
+RUN cp ./traces-override-route.ts './apps/manage-ui/src/app/api/traces/route.ts'
 
 # Make AGENTS_API_URL available at build time so next.config.ts can bake the
 # correct rewrite destination (Railway env vars are only injected at runtime,

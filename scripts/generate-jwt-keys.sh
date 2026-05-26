@@ -13,12 +13,14 @@ generate_playground_keys() {
   privfile=$(mktemp)
   pubfile=$(mktemp)
 
-  openssl genrsa -out "$privfile" 2048 2>/dev/null
-  openssl rsa -in "$privfile" -pubout -out "$pubfile" 2>/dev/null
+  # Use genpkey to produce PKCS#8 format ("BEGIN PRIVATE KEY") required by importPKCS8 (jose)
+  # openssl genrsa produces PKCS#1 ("BEGIN RSA PRIVATE KEY") which is NOT compatible
+  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$privfile" 2>/dev/null
+  openssl pkey -in "$privfile" -pubout -out "$pubfile" 2>/dev/null
 
   local priv_b64 pub_b64
-  priv_b64=$(base64 -i "$privfile" | tr -d '\n')
-  pub_b64=$(base64 -i "$pubfile" | tr -d '\n')
+  priv_b64=$(base64 -w 0 "$privfile" 2>/dev/null || base64 -i "$privfile" | tr -d '\n')
+  pub_b64=$(base64 -w 0 "$pubfile" 2>/dev/null || base64 -i "$pubfile" | tr -d '\n')
 
   echo
   echo "# Playground JWT Keys (base64-encoded for .env)"
@@ -33,11 +35,12 @@ generate_copilot_keys() {
   privfile=$(mktemp)
   pubfile=$(mktemp)
 
-  openssl genrsa -out "$privfile" 2048 2>/dev/null
-  openssl rsa -in "$privfile" -pubout -out "$pubfile" 2>/dev/null
+  # Use genpkey to produce PKCS#8 format required by importPKCS8 (jose)
+  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$privfile" 2>/dev/null
+  openssl pkey -in "$privfile" -pubout -out "$pubfile" 2>/dev/null
 
   local priv_b64 kid
-  priv_b64=$(base64 -i "$privfile" | tr -d '\n')
+  priv_b64=$(base64 -w 0 "$privfile" 2>/dev/null || base64 -i "$privfile" | tr -d '\n')
   kid="pg-$(openssl dgst -sha256 "$pubfile" | awk '{print $2}' | cut -c1-12)"
 
   echo
