@@ -15,6 +15,9 @@ COPY apps/agents-api/ ./apps/agents-api/
 
 RUN pnpm install --frozen-lockfile --offline
 
+# Patch Dolt "AS OF '<branch>'" SQL that fails on standard PostgreSQL
+RUN WORKDIR=/inkeep-agents node scripts/patch-dolt-as-of.mjs
+
 WORKDIR /inkeep-agents/apps/agents-api
 
 RUN pnpm build
