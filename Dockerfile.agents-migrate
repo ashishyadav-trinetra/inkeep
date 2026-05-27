@@ -14,4 +14,8 @@ COPY scripts/ ./scripts/
 
 RUN pnpm install --frozen-lockfile --offline
 
-CMD ["sh", "-c", "pnpm db:manage:migrate && node --experimental-strip-types scripts/run-migrate-debug.mjs && pnpm db:auth:init"]
+# Use drizzle-kit directly for the manage DB migration instead of migrate-dolt.ts.
+# migrate-dolt.ts calls doltAddAndCommit (Dolt-specific stored procedures) after running
+# the Drizzle migrations — those calls fail with "function dolt_add does not exist" on
+# standard Postgres (Neon). drizzle-kit migrate works identically on both Dolt and Postgres.
+CMD ["sh", "-c", "pnpm drizzle-kit migrate --config=drizzle.manage.config.ts && node --experimental-strip-types scripts/run-migrate-debug.mjs && pnpm db:auth:init"]
