@@ -15,7 +15,6 @@ COPY apps/manage-ui/ ./apps/manage-ui/
 COPY apps/manage-ui/next.config.docker.ts ./next.config.docker.ts
 COPY apps/manage-ui/auth-proxy-route.ts ./auth-proxy-route.ts
 COPY apps/manage-ui/traces-override-route.ts ./traces-override-route.ts
-COPY apps/manage-ui/login-override-page.tsx ./login-override-page.tsx
 
 RUN pnpm install --frozen-lockfile --offline
 
@@ -52,14 +51,6 @@ RUN mkdir -p './apps/manage-ui/src/app/api/auth/[...slug]' && \
 # The default route uses fetchWithRetry which amplifies each query into 4 requests on 5xx.
 # This override returns 200+empty-data on any 5xx (single attempt, no retry).
 RUN cp ./traces-override-route.ts './apps/manage-ui/src/app/api/traces/route.ts'
-
-# Replace the upstream login page with a self-service Google-first version.
-# The upstream page is email-first (enterprise/invite-only): it runs an auth-lookup on
-# the entered email and only shows the Google button if the email already belongs to a
-# known organization — so brand-new users never see it.
-# This override shows "Continue with Google" as the primary action. Better Auth
-# auto-creates the user + organization on first Google login (multitenancy out of the box).
-RUN cp ./login-override-page.tsx './apps/manage-ui/src/app/login/page.tsx'
 
 # Make AGENTS_API_URL available at build time so next.config.ts can bake the
 # correct rewrite destination (Railway env vars are only injected at runtime,
