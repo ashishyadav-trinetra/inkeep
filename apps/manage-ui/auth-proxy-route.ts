@@ -43,9 +43,19 @@ async function proxyToAgentsApi(request: NextRequest): Promise<NextResponse> {
 
   // Copy ALL upstream response headers — critically Set-Cookie so the browser
   // stores the session cookie on manage-ui's domain rather than cross-site.
+  //
+  // Strip the Domain attribute from Set-Cookie headers so the cookie binds to
+  // manage-ui's specific hostname (manage-ui-inkeep-agents.up.railway.app) rather
+  // than the broad upstream domain (.up.railway.app). The upstream domain is on
+  // the Public Suffix List, so browsers refuse to store cookies for it. Without
+  // a Domain attribute the browser defaults to the response origin's hostname.
   const responseHeaders = new Headers();
   upstream.headers.forEach((value, key) => {
-    responseHeaders.append(key, value);
+    if (key.toLowerCase() === 'set-cookie') {
+      responseHeaders.append(key, value.replace(/;\s*domain=[^;]*/gi, ''));
+    } else {
+      responseHeaders.append(key, value);
+    }
   });
 
   return new NextResponse(upstream.body, {
