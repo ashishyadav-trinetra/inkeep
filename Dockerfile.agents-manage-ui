@@ -56,6 +56,7 @@ RUN cp ./traces-override-route.ts './apps/manage-ui/src/app/api/traces/route.ts'
 # correct rewrite destination (Railway env vars are only injected at runtime,
 # so we must pass this as a build arg before `pnpm next build` runs).
 ARG AGENTS_API_URL=https://agents-api-inkeep-agents.up.railway.app
+ENV AGENTS_API_URL=${AGENTS_API_URL}
 ENV INKEEP_AGENTS_API_URL=${AGENTS_API_URL}
 
 WORKDIR /inkeep-agents/apps/manage-ui

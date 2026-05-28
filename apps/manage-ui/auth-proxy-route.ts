@@ -16,11 +16,12 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 
-// AGENTS_API_URL must be the direct agents-api URL (e.g. https://agents-api-xxx.up.railway.app).
+// AGENTS_API_URL (or INKEEP_AGENTS_API_URL) must be the direct agents-api URL.
 // Do NOT set this to the manage-ui's own URL — that creates an infinite proxy loop.
 // In Railway: add AGENTS_API_URL=https://agents-api-inkeep-agents.up.railway.app to the manage-ui service.
 const AGENTS_API_URL =
   process.env.AGENTS_API_URL ||
+  process.env.INKEEP_AGENTS_API_URL ||
   'http://localhost:3002';
 
 async function proxyToAgentsApi(request: NextRequest): Promise<NextResponse> {
